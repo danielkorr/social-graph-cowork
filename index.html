@@ -143,3 +143,183 @@ document.getElementById('search').addEventListener('input',function(){
 });
 
 </script>
+<style>
+#chat-panel{position:fixed;bottom:0;left:0;right:0;background:var(--color-background-primary,#fff);border-top:1px solid rgba(0,0,0,0.12);z-index:100;font-family:var(--font-sans,system-ui,sans-serif)}
+#chat-messages{max-height:180px;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+.chat-msg{padding:7px 11px;border-radius:12px;font-size:13px;max-width:88%;line-height:1.4;word-break:break-word}
+.chat-msg.bot{background:#f0effe;color:#3b1fa8;align-self:flex-start;border-bottom-left-radius:3px}
+.chat-msg.user{background:#378add;color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+#chat-input-row{display:flex;align-items:center;gap:6px;padding:8px 10px;border-top:0.5px solid rgba(0,0,0,0.08)}
+#chat-input{flex:1;border:0.5px solid rgba(0,0,0,0.2);border-radius:20px;padding:8px 14px;font-size:15px;outline:none;background:var(--color-background-secondary,#f5f5f5)}
+#mic-btn{width:38px;height:38px;border-radius:50%;border:0.5px solid rgba(0,0,0,0.2);background:var(--color-background-secondary,#f5f5f5);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:17px}
+#mic-btn.listening{background:#e11d48;border-color:#e11d48;color:#fff}
+#send-btn{width:38px;height:38px;border-radius:50%;background:#378add;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:17px}
+#graph{margin-bottom:260px}
+</style>
+<div id="chat-panel">
+  <div id="chat-messages">
+    <div class="chat-msg bot">Hi Dano! Try: <b>"find Ric Frasse"</b>, <b>"path to Rishi Chandra"</b>, <b>"who do I know at Google"</b>, or <b>"show my top connections"</b></div>
+  </div>
+  <div id="chat-input-row">
+    <button id="mic-btn" title="Voice input">🎤</button>
+    <input id="chat-input" type="text" placeholder="Search or ask anything…" autocomplete="off" autocorrect="off" spellcheck="false">
+    <button id="send-btn" title="Send">➤</button>
+  </div>
+</div>
+<script>
+(function(){
+// ── Query engine ─────────────────────────────────────────────────────────────
+function findNode(q){
+  q=q.toLowerCase().trim();
+  return GDATA.nodes.find(n=>n.label.toLowerCase()===q)
+      || GDATA.nodes.find(n=>n.label.toLowerCase().startsWith(q))
+      || GDATA.nodes.find(n=>n.label.toLowerCase().includes(q));
+}
+function findByOrg(q){
+  q=q.toLowerCase().trim();
+  return GDATA.nodes.filter(n=>n.id!=='me'&&(n.org||'').toLowerCase().includes(q));
+}
+function bfsPath(aId,bId){
+  const adj={};
+  GDATA.nodes.forEach(n=>adj[n.id]=[]);
+  GDATA.links.forEach(l=>{const s=l.source.id||l.source,t=l.target.id||l.target;adj[s].push(t);adj[t].push(s);});
+  const prev={},visited=new Set([aId]),q=[aId];
+  while(q.length){const cur=q.shift();if(cur===bId)break;for(const nb of(adj[cur]||[])){if(!visited.has(nb)){visited.add(nb);prev[nb]=cur;q.push(nb);}}}
+  if(!prev[bId]&&bId!==aId)return null;
+  const path=[];let cur=bId;while(cur){path.unshift(cur);cur=prev[cur];}
+  return path;
+}
+function highlightNode(n){
+  const nb=new Set([n.id,...GDATA.links.filter(l=>(l.source.id||l.source)===n.id||(l.target.id||l.target)===n.id).flatMap(l=>[(l.source.id||l.source),(l.target.id||l.target)])]);
+  if(typeof node!=='undefined'){
+    node.attr('fill-opacity',x=>nb.has(x.id)?0.95:0.06);
+    const lc={'linkedin-connection':'#94a3b8','co-message':'#10b981','same-company':'#f59e0b','gmail-contact':'#fca5a5','phone-contact':'#86efac','imported-contact':'#67e8f9','colleague':'#818cf8','intro':'#a78bfa','family':'#7c3aed'};
+    link.attr('stroke-opacity',l=>{const s=l.source.id||l.source,t=l.target.id||l.target;return(nb.has(s)&&nb.has(t))?0.7:0.03;});
+  }
+}
+function highlightPath(path){
+  const ps=new Set(path),pe=new Set();
+  for(let i=0;i<path.length-1;i++)pe.add(path[i]+'>'+path[i+1]);
+  const nc=n=>n.id==='me'?'#7c3aed':(n.source==='2nd-degree'||n.degree===2)?'#d97706':n.source==='iphone'?'#16a34a':n.source==='gmail'?'#e11d48':n.source==='imported'?'#0891b2':'#378add';
+  const lc={'linkedin-connection':'#94a3b8','co-message':'#10b981','same-company':'#f59e0b','gmail-contact':'#fca5a5','phone-contact':'#86efac','imported-contact':'#67e8f9','colleague':'#818cf8','intro':'#a78bfa','family':'#7c3aed'};
+  node.attr('fill',n=>ps.has(n.id)?'#7c3aed':nc(n)).attr('fill-opacity',n=>ps.has(n.id)?1:0.1);
+  link.attr('stroke',l=>{const s=l.source.id||l.source,t=l.target.id||l.target;return(pe.has(s+'>'+t)||pe.has(t+'>'+s))?'#7c3aed':lc[l.rel]||'#94a3b8';})
+      .attr('stroke-opacity',l=>{const s=l.source.id||l.source,t=l.target.id||l.target;return(pe.has(s+'>'+t)||pe.has(t+'>'+s))?1:0.03;})
+      .attr('stroke-width',l=>{const s=l.source.id||l.source,t=l.target.id||l.target;return(pe.has(s+'>'+t)||pe.has(t+'>'+s))?2.5:0.7;});
+}
+
+function processQuery(raw){
+  const q=raw.toLowerCase().trim();
+  const msgs=document.getElementById('chat-messages');
+
+  // show user message
+  const um=document.createElement('div');
+  um.className='chat-msg user';um.textContent=raw;msgs.appendChild(um);
+
+  let reply='';
+
+  // "reset" / "clear"
+  if(/^(reset|clear|start over)$/.test(q)){
+    reset();reply='Graph reset.';
+  }
+  // "top connections" / "strongest ties"
+  else if(/top|strongest|most messages/.test(q)){
+    const top=GDATA.nodes.filter(n=>n.msg_freq>0&&n.id!=='me').sort((a,b)=>b.msg_freq-a.msg_freq).slice(0,5);
+    reply='Your top 5 by messages:
+'+top.map((n,i)=>`${i+1}. ${n.label} (${n.msg_freq} msgs)`).join('
+');
+    highlightNode({id:'me',...GDATA.nodes.find(n=>n.id==='me')});
+  }
+  // "who do I know at [company]" / "show [company]"
+  else if(/know at |at |show .+ cluster|who.*at /.test(q)){
+    const m=q.match(/(?:know at|at|show|cluster)\s+(.+)/);
+    const term=m?m[1].replace(/cluster|connections?/g,'').trim():q.replace(/who.*at\s*/,'');
+    const found=findByOrg(term);
+    if(found.length===0){reply=`No contacts found at "${term}".`;}
+    else{
+      const nb=new Set(found.map(n=>n.id));nb.add('me');
+      node.attr('fill-opacity',n=>nb.has(n.id)?0.95:0.06);
+      link.attr('stroke-opacity',l=>{const s=l.source.id||l.source,t=l.target.id||l.target;return(nb.has(s)&&nb.has(t))?0.6:0.03;});
+      reply=`${found.length} contact${found.length>1?'s':''} at "${found[0].org||term}":
+`+found.slice(0,8).map(n=>n.label).join(', ')+(found.length>8?`, +${found.length-8} more`:'');
+    }
+  }
+  // "path to [name]" / "how do I know [name]" / "connect me to [name]"
+  else if(/path to|how do i know|connect.*to|intro to|get to/.test(q)){
+    const m=q.match(/(?:path to|know |connect.*to |intro to |get to )\s*(.+)/);
+    const name=m?m[1].trim():q;
+    const target=findNode(name);
+    if(!target){reply=`Couldn't find "${name}" in your network.`;}
+    else{
+      const path=bfsPath('me',target.id);
+      if(!path){reply=`No path found to ${target.label}.`;}
+      else{
+        highlightPath(path);
+        const names=path.map(id=>{const n=GDATA.nodes.find(x=>x.id===id);return n?n.label:id;});
+        reply=`${path.length-1} hop${path.length>2?'s':''} to ${target.label}:
+${names.join(' → ')}`;
+      }
+    }
+  }
+  // "2nd degree" / "show 2nd degree"
+  else if(/2nd|second degree/.test(q)){
+    const nd=GDATA.nodes.filter(n=>n.source==='2nd-degree');
+    const nb=new Set(nd.map(n=>n.id));nb.add('me');
+    node.attr('fill-opacity',n=>nb.has(n.id)||n.source!=='2nd-degree'&&nd.some(d=>GDATA.links.find(l=>(l.source.id||l.source)===d.id&&(l.target.id||l.target)===n.id||(l.source.id||l.source)===n.id&&(l.target.id||l.target)===d.id))?0.7:0.06);
+    reply=`You have ${nd.length} 2nd-degree contacts:
+`+nd.map(n=>n.label+' ('+n.org+')').join('
+');
+  }
+  // "find [name]" / "[name]" / "show [name]" / "who is [name]"
+  else{
+    const name=q.replace(/^(find|show|who is|lookup|look up|search for)\s+/,'').trim();
+    const target=findNode(name);
+    if(!target){reply=`No one named "${name}" found. Try a partial name or company.`;}
+    else{
+      highlightNode(target);
+      const deg=target.source==='2nd-degree'?'2nd degree':target.degree===1?'Direct connection':'Unknown';
+      const src=({linkedin:'LinkedIn',gmail:'Gmail',iphone:'iPhone',imported:'Imported','2nd-degree':'2nd degree'})[target.source||'linkedin']||'LinkedIn';
+      reply=`${target.label}
+${target.org?target.org+'
+':''}${target.position?target.position+'
+':''}Source: ${src}${target.msg_freq?'
+Messages: '+target.msg_freq:''}`;
+    }
+  }
+
+  const bm=document.createElement('div');
+  bm.className='chat-msg bot';bm.style.whiteSpace='pre-line';bm.textContent=reply;
+  msgs.appendChild(bm);msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ── Input handling ────────────────────────────────────────────────────────────
+const inp=document.getElementById('chat-input');
+document.getElementById('send-btn').addEventListener('click',()=>{
+  const v=inp.value.trim();if(!v)return;processQuery(v);inp.value='';
+});
+inp.addEventListener('keydown',e=>{if(e.key==='Enter'){const v=inp.value.trim();if(!v)return;processQuery(v);inp.value='';}});
+
+// ── Voice input ───────────────────────────────────────────────────────────────
+const micBtn=document.getElementById('mic-btn');
+if('webkitSpeechRecognition' in window||'SpeechRecognition' in window){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const rec=new SR();
+  rec.lang='en-US';rec.interimResults=false;rec.maxAlternatives=1;
+  let listening=false;
+  micBtn.addEventListener('click',()=>{
+    if(listening){rec.stop();return;}
+    rec.start();listening=true;
+    micBtn.classList.add('listening');micBtn.textContent='⏹';
+  });
+  rec.onresult=e=>{
+    const t=e.results[0][0].transcript;
+    inp.value=t;processQuery(t);inp.value='';
+  };
+  rec.onend=()=>{listening=false;micBtn.classList.remove('listening');micBtn.textContent='🎤';};
+  rec.onerror=()=>{listening=false;micBtn.classList.remove('listening');micBtn.textContent='🎤';};
+}else{
+  micBtn.title='Voice not supported in this browser';
+  micBtn.style.opacity='0.4';
+}
+})();
+</script>
