@@ -82,8 +82,12 @@ main{flex:1;padding:20px 16px;max-width:560px;margin:0 auto;width:100%}
 @media(max-width:599px){.grip{display:none}#fs-btn{display:none}}
 #s3.fullscreen #graph-section{position:fixed;top:0;left:0;right:0;bottom:0;z-index:300}
 #s3.fullscreen #graph-row{height:100vh}
-#s3.fullscreen #graph-legend,#s3.fullscreen #s3-actions,#s3.fullscreen .screen-hdr{display:none}
+#s3.fullscreen #graph-legend,#s3.fullscreen #s3-actions,#s3.fullscreen .screen-hdr,#s3.fullscreen #graph-ctrl{display:none}
 #s3.fullscreen #fs-btn{top:12px;right:12px;display:flex}
+#graph-ctrl{padding:10px 16px;background:#f8f9fa;border-bottom:0.5px solid #e5e5e5;display:flex;align-items:center;justify-content:center}
+#s3-expand{padding:10px 32px;background:#1d4ed8;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;min-width:160px}
+#s3-expand:hover{background:#1e40af}
+#s3-expand:active{background:#1e3a8a}
 </style>
 </head>
 <body>
@@ -124,8 +128,10 @@ main{flex:1;padding:20px 16px;max-width:560px;margin:0 auto;width:100%}
   <div class="screen-hdr"><div class="screen-hdr-inner">
     <button class="back-btn" id="s3-back">&#x2190;</button>
     <div class="scr-title" id="s3-title">Neighborhood</div>
-    <button class="btn-p" id="s3-expand" style="flex:0;padding:9px 18px;font-size:14px;min-width:0;margin-left:auto">Expand</button>
   </div></div>
+  <div id="graph-ctrl">
+    <button id="s3-expand">Expand</button>
+  </div>
   <div id="graph-section">
     <div id="graph-row">
       <div class="grip" id="grip-l">&#x2016;</div>
