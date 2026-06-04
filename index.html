@@ -344,6 +344,7 @@ function showScreen3(id, path, expanded){
 }
 
 function renderGraph(nodes,links,pathEdges,selectedId){
+  _lastNodes=nodes;_lastLinks=links;_lastPathEdges=pathEdges;_lastSelId=selectedId;
   var wrap=document.getElementById("graph-wrap");
   var W=Math.min(wrap.offsetWidth||360, window.innerWidth-32);
   var H=Math.min(Math.round(W*0.75),420);
@@ -449,14 +450,9 @@ if("webkitSpeechRecognition" in window||"SpeechRecognition" in window){
   rec.onerror=rec.onend;
 }else{document.getElementById("mic").style.opacity="0.35";}
 
-// Store last render args for re-render on resize
+// State tracking for re-render on resize
 var _lastNodes=null,_lastLinks=null,_lastPathEdges=null,_lastSelId=null;
-var _origRenderGraph=renderGraph;
-function renderGraph(nodes,links,pathEdges,selectedId){
-  _lastNodes=nodes;_lastLinks=links;_lastPathEdges=pathEdges;_lastSelId=selectedId;
-  _origRenderGraph(nodes,links,pathEdges,selectedId);
-}
-function rerender(){if(_lastNodes)_origRenderGraph(_lastNodes,_lastLinks,_lastPathEdges,_lastSelId);}
+function rerender(){if(_lastNodes)renderGraph(_lastNodes,_lastLinks,_lastPathEdges,_lastSelId);}
 
 // Fullscreen toggle
 var fsBtn=document.getElementById("fullscreen-btn");
