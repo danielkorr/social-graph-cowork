@@ -194,7 +194,7 @@ function doSearch(q){
   var ql=q.toLowerCase();
   var m=PEOPLE.filter(function(p){return p.label.toLowerCase().includes(ql)||(p.org||"").toLowerCase().includes(ql)||(p.position||"").toLowerCase().includes(ql);}).sort(function(a,b){var an=a.label.toLowerCase().startsWith(ql)?0:1,bn=b.label.toLowerCase().startsWith(ql)?0:1;if(an!==bn)return an-bn;return (b.msg_freq||0)-(a.msg_freq||0);}).slice(0,12);
   res.innerHTML="";
-  if(!m.length){empty.style.display="block";empty.textContent="No contacts found for \"+q+"\"";status.textContent="";return;}
+  if(!m.length){empty.style.display="block";empty.textContent="No contacts found: "+q;status.textContent="";return;}
   empty.style.display="none";
   var frag=document.createDocumentFragment();
   m.forEach(function(p){frag.appendChild(makeItem(p,q));});
