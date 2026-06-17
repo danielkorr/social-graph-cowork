@@ -209,7 +209,7 @@ var SBG={"linkedin":"#eff6ff","gmail":"#fef2f2","iphone":"#f0fdf4","imported":"#
 var AVC=["#5b4fcf","#2563eb","#0891b2","#059669","#d97706","#dc2626","#9333ea","#c026d3"];
 var RC={"linkedin-connection":"#c4cdd6","co-message":"#10b981","same-company":"#f59e0b","gmail-contact":"#fca5a5","phone-contact":"#86efac","imported-contact":"#67e8f9","colleague":"#818cf8","intro":"#a78bfa","family":"#7c3aed"};
 
-document.getElementById("hdr-count").textContent=PEOPLE.length+" contacts — tap a name to explore";
+var _hc=document.getElementById("hdr-count");if(_hc)_hc.textContent=PEOPLE.length+" contacts — tap a name to explore";
 function ini(n){var p=n.trim().split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();}
 function avc(n){var h=0;for(var i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))&0xffff;return AVC[h%AVC.length];}
 function hlNode(el,text,q){if(!q){el.textContent=text;return;}var ql=q.toLowerCase(),idx=text.toLowerCase().indexOf(ql);if(idx<0){el.textContent=text;return;}el.appendChild(document.createTextNode(text.slice(0,idx)));var em=document.createElement("em");em.style.cssText="color:#3b82f6;font-style:normal";em.textContent=text.slice(idx,idx+ql.length);el.appendChild(em);el.appendChild(document.createTextNode(text.slice(idx+ql.length)));}
